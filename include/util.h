@@ -24,6 +24,7 @@ void cvt_16_32(int16_t* src, float* dest, int len);
   
 void gather_16(const int* id, const int16_t* src, int16_t* dest, int len);
 void fill_16(int N, float ALPHA, int16_t* X);
+void fill_32(int N, float ALPHA, float* X);
 void normalize_16(int16_t *x, int16_t *mean, int16_t *variance, int filters, int spatial);
 void scale_16(int16_t* x, int16_t scale, int size);
 void add_16(int16_t* x, int16_t y, int size);

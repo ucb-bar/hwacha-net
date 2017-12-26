@@ -14,20 +14,36 @@ COMMON =   -Iinclude/
 CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -g
 CFLAGS +=  $(OPTS)
 
-OBJ = util.o layer.o util_asm.o
+OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 
 DEPS = $(wildcard include/*.h) Makefile obj
 
-TINYYOLO_OBJ = $(addprefix $(OBJDIR), tiny_yolo.o)
-TINYYOLO = tiny_yolo
+TINYYOLO_16_OBJ = $(addprefix $(OBJDIR), tiny_yolo_16.o)
+TINYYOLO_16 = tiny_yolo_16
 
-all : $(TINYYOLO) $(TINYYOLO).dump
+TINYYOLO_32_OBJ = $(addprefix $(OBJDIR), tiny_yolo_32.o)
+TINYYOLO_32 = tiny_yolo_32
+
+TEST_OBJ = $(addprefix $(OBJDIR), test.o)
+TEST = test
+
+EXECS = tiny_yolo_16 tiny_yolo_32 test
+DUMPS = $(addpostfix .dump, $(EXECS))
+
+all : $(EXECS) $(DUMPS)
 
 %.dump : %
 	$(OBJDUMP) -d $^ > $@
 
-$(TINYYOLO): $(TINYYOLO_OBJ) $(OBJS)
+
+$(TINYYOLO_16): $(TINYYOLO_16_OBJ) $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(TEST): $(TEST_OBJ) $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(TINYYOLO_32): $(TINYYOLO_32_OBJ) $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(OBJDIR)%.o: %.c $(DEPS)

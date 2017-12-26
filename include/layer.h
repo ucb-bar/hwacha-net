@@ -7,6 +7,11 @@
 
 
 typedef enum {
+  DOUBLE = 8,
+  SINGLE = 4,
+  HALF = 2
+} PRECISION;
+typedef enum {
   ERROR,
   CONVOLUTIONAL,
   MAXPOOL,
@@ -24,6 +29,7 @@ typedef struct layer layer;
 
 struct layer
 {
+  PRECISION prec;
   LAYER_TYPE type;
   int h;
   int w;
@@ -36,6 +42,7 @@ struct layer
   int pad;
 
   int16_t* weights_16;
+  float* weights_32;
   int* indices;
 
   size_t input_size;
@@ -54,5 +61,5 @@ size_t max_size(struct layer**, int);
 size_t max_workspace(struct layer**, int);
 void load_layers(struct layer**, int, FILE*);
 
-void layer_forward(struct layer*, int16_t*, int16_t*, int16_t*);
+void layer_forward(struct layer*, void*, void*, void*);
 #endif

@@ -248,24 +248,20 @@ void fill_16(int N, float ALPHA, int16_t * X)
 {
    int i;
    setvcfg(0, 0, 1, 1);
-   asm volatile ("vmcs vs1, %0"
-                 :
-                 : "r" (ALPHA));
+   asm volatile ("vmcs vs1, %0" : : "r" (ALPHA));
    for (i = 0; i < N; )
      {
        int consumed = setvlen (N - i);
-       asm volatile ("vmca va0, %0"
-                     :
-                     : "r" (&X[i]));
-       asm volatile ("la t0, vfill_16"
-                     :
-                     :
-                     : "t0");
+       asm volatile ("vmca va0, %0" : : "r" (&X[i]));
+       asm volatile ("la t0, vfill_16" : : : "t0");
        asm volatile ("lw t1, 0(t0)");
        asm volatile ("vf 0(t0)");
        i += consumed;
      }
    asm volatile ("fence");
+}
+void fill_32(int N, float ALPHA, float* X)
+{
 }
 
 

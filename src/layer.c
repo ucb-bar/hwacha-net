@@ -122,8 +122,14 @@ void batchnorm_forward_16(struct layer* l, int16_t* src, int16_t* dest)
 
 void batchnorm_forward_32(struct layer* l, float* src, float* dest)
 {
-
-} 
+  float* scales = l->weights_32;
+  float* rolling_mean = l->weights_32 + l->output_c;
+  float* rolling_variance = l->weights_32 + 2 * l->output_c;
+  normalize_32(src, rolling_mean, rolling_variance, l->output_c, l->output_h*l->output_w);
+  for(int i = 0; i < l->output_c; ++i)
+    scale_32 (&src[i*l->output_h*l->output_w], scales[i], l->output_h*l->output_w);
+  printf("%.3f %.3f %.3f \n", src[0], src[1], src[2]);
+}
 void bias_forward_16(struct layer* l, int16_t* src)
 {
   for(int i = 0; i < l->output_c; ++i)
@@ -131,7 +137,9 @@ void bias_forward_16(struct layer* l, int16_t* src)
 }
 void bias_forward_32(struct layer* l, float* src)
 {
-
+  for(int i = 0; i < l->output_c; ++i)
+    add_32 (&src[i*l->output_h*l->output_w], l->weights_32[i], l->output_h*l->output_w);
+  printf("%.3f\n", src[0]);
 }
 
 void leaky_forward_16(struct layer* l, int16_t* src)
@@ -153,6 +161,21 @@ void leaky_forward_16(struct layer* l, int16_t* src)
 }
 void leaky_forward_32(struct layer* l, float* src)
 {
+  setvcfg(0, 1, 0, 2);
+  float a = 0.1f;
+  asm volatile ("vmcs vs2, %0" : : "r" (a));
+  int len = l->output_h*l->output_w*l->output_c;
+  for (int i = 0; i < len; )
+    {
+      int consumed = setvlen(len - i);
+      asm volatile ("vmca va0, %0" : : "r" (&src[i]));
+      asm volatile ("la t0, vleaky_activate_32" : : : "t0");
+      asm volatile ("lw t1, 0(t0)");
+      asm volatile ("vf 0(t0)");
+      i += consumed;
+    }
+  asm volatile ("fence");
+  printf("%.3f %.3f %.3f \n", src[0], src[1], src[2]);
 }
 
 int entry_index(struct layer* l, int location, int entry)
@@ -175,6 +198,13 @@ void logistic_16(int16_t* src, int size)
         buf[j] = logistic_activate (buf[j]);
       cvt_32_16 (buf, &src[i], consumed);
       i += consumed;
+    }
+}
+void logistic_32(float* src, int size)
+{
+  for (int i = 0; i < size; i++)
+    {
+      src[i] = logistic_activate(src[i]);
     }
 }
 void softmax(float *input, int n, int stride, float *output)
@@ -229,6 +259,17 @@ void region_forward_16(struct layer* l, int16_t* src, int16_t* dest, int16_t* wo
 
 void region_forward_32(struct layer* l, float* src, float* dest, float* workspace)
 {
+  int index;
+  memcpy_32(src, dest, l->h*l->w*l->c);
+  for(int n = 0; n < l->n; ++n)
+    {
+      index = entry_index(l, n*l->w*l->h, 0);
+      logistic_32(dest+index, 2*l->w*l->h);
+      index = entry_index(l, n*l->w*l->h, 4);
+      logistic_32(dest+index, l->w*l->h);
+    }
+  index = entry_index(l, 0, 4 + 1);
+  softmax_cpu(src + index, l->size, l->n, l->h*l->w*l->c/l->n, l->w*l->h, l->w*l->h, dest + index);
 }
 
 void layer_forward_16(struct layer* layer, int16_t* src, int16_t* dest, int16_t* workspace)

@@ -14,7 +14,7 @@ COMMON =   -Iinclude/
 CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -g
 CFLAGS +=  $(OPTS)
 
-OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o
+OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 
 DEPS = $(wildcard include/*.h) Makefile obj

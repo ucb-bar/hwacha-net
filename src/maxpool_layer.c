@@ -1,5 +1,6 @@
 #include "layer.h"
 #include "util.h"
+#include <float.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -124,9 +125,45 @@ void maxpool_darknet_forward_16(struct layer* l, int16_t* src, int16_t* dest)
          }
      }
    //printf("%hu %hu %hu %hu %hu maxpool\n", src[1000], src[2000], src[4000], src[16000], src[32000]);
-   return;
 }
 
 void maxpool_darknet_forward_32(struct layer* l, float* src, float* dest)
 {
+  int i,j,k,m,n;
+  //int outputs = l->output_h * l->output_w * l->output_c;
+  //printf("%d outputs\n", outputs);
+  int w_offset = -l->pad;
+  int h_offset = -l->pad;
+  int h = l->output_h;
+  int w = l->output_w;
+  int c = l->c;
+  for(k = 0; k < c; ++k)
+    {
+      for(i = 0; i < h; ++i)
+        {
+          for(j = 0; j < w; ++j)
+            {
+              int out_index = j + w*(i + h*k);
+              float max = -FLT_MAX;
+              for(n = 0; n < l->size; ++n)
+                {
+                  for(m = 0; m < l->size; ++m)
+                    {
+                      int cur_h = h_offset + i*l->stride + n;
+                      int cur_w = w_offset + j*l->stride + m;
+                      int index = cur_w + l->w*(cur_h + l->h*k);
+                      int valid = (cur_h >= 0 && cur_h < l->h &&
+                                   cur_w >= 0 && cur_w < l->w);
+                      float val = (valid != 0) ? src[index] : -FLT_MAX;
+                      int s = val > max;
+                      max   = (s) ? val   : max;
+                    }
+                }
+              src[out_index] = max;
+            }
+        }
+    }
+  printf("%.3f %.3f %.3f\n", src[0], src[1], src[2]);
+  //memcpy_32(dest, src, h*w*c);
+  //printf("%hu %hu %hu %hu %hu maxpool\n", src[1000], src[2000], src[4000], src[16000], src[32000]);
 }

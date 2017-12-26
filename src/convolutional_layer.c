@@ -1,5 +1,6 @@
 #include "layer.h"
 #include "util.h"
+#include "gemm.h"
 #include <math.h>
 #include <stdint.h>
 
@@ -64,6 +65,41 @@ void im2col_id(struct layer* l, int size)
     }
   l->indices = id;
 }
+float im2col_get_pixel(float *im, int height, int width, int channels,
+                        int row, int col, int channel, int pad)
+{
+    row -= pad;
+    col -= pad;
+    if (row < 0 || col < 0 ||
+        row >= height || col >= width) return 0;
+    return im[col + width*(row + height*channel)];
+}
+
+
+void im2col_32(float* data_im,
+               int channels,  int height,  int width,
+               int ksize,  int stride, int pad, float* data_col) 
+{
+  int c,h,w;
+  int height_col = (height + 2*pad - ksize) / stride + 1;
+  int width_col = (width + 2*pad - ksize) / stride + 1;
+  
+  int channels_col = channels * ksize * ksize;
+  for (c = 0; c < channels_col; ++c) {
+    int w_offset = c % ksize;
+    int h_offset = (c / ksize) % ksize;
+    int c_im = c / ksize / ksize;
+    for (h = 0; h < height_col; ++h) {
+      for (w = 0; w < width_col; ++w) {
+        int im_row = h_offset + h * stride;
+        int im_col = w_offset + w * stride;
+        int col_index = (c * height_col + h) * width_col + w;
+        data_col[col_index] = im2col_get_pixel(data_im, height, width, channels,
+                                               im_row, im_col, c_im, pad);
+      }
+    }
+  }
+}
 
 
 void convolutional_precomp_forward_16(struct layer* l, int16_t* src, int16_t* dest, int16_t* workspace)
@@ -90,4 +126,38 @@ void convolutional_precomp_forward_16(struct layer* l, int16_t* src, int16_t* de
 void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, float* workspace)
 {
   fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
+  int m = l->n;
+  int k = l->size*l->size*l->c;
+  int n = l->output_w*l->output_h;
+
+  float *a = l->weights_32;
+  float *b = workspace;
+  float *c = dest;
+  int srcblock = l->h*l->w;
+  int destblock = l->output_h*l->output_w*l->size*l->size;
+  
+  for (int c = 0; c < l->c; c++) {
+    gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
+  }
+  gemm_32(m,n,k,a,b,c);
+  printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
+}
+
+void convolutional_forward_32(struct layer* l, float* src, float* dest, float* workspace)
+{
+  int i, j;
+
+  fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
+
+  int m = l->n;
+  int k = l->size*l->size*l->c;
+  int n = l->output_w*l->output_h;
+  float *a = l->weights_32;
+  float *b = workspace;
+  float *c = dest;
+
+  im2col_32(src, l->c, l->h, l->w, l->size, l->stride, l->pad, b);
+  gemm_32(m,n,k,a,b,c);
+  
+  printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
 }

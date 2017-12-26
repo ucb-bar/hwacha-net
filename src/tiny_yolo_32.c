@@ -126,7 +126,7 @@ int main(int argc, char** argv)
         return 0;
       }
     int i, j, k;
-    float* buf = (float*) output;
+    float* buf = (float*) input;
     for(k = 0; k < c; ++k)
       for(j = 0; j < h; ++j)
         for(i = 0; i < w; ++i)
@@ -139,13 +139,13 @@ int main(int argc, char** argv)
     //printf("%u %u %u\n", buf[80000], buf[80001], buf[80002]);
     //cvt_32_16(buf, input, conv0.h*conv0.w*conv0.c);
     //printf("%hu %hu %hu\n", input[80000], input[80001], input[80002]);
+    printf("%.3f\n", input[0]);
   }
 
   
   size_t cycles = rdcycle();
   {
     layer_forward(&conv0, input, output, workspace); swap(&input, &output);
-    return;
     layer_forward(&bn0, input, output, workspace);
     layer_forward(&bias0, input, output, workspace);
     layer_forward(&leaky0, input, output, workspace);
@@ -197,9 +197,8 @@ int main(int argc, char** argv)
     layer_forward(&region15, input, output, workspace);
   }
   cycles = rdcycle() - cycles;
-  float* out = (float*) output;
-  for (int i = 0; i < region15.output_h*region15.output_w*region15.output_c; i++)
-    printf("%d %.3f\n", i, out[i]);
+  /* for (int i = 0; i < region15.output_h*region15.output_w*region15.output_c; i++) */
+  /*   printf("%d %.3f\n", i, output[i]); */
   printf("%lu\n", cycles);
   
   return 0;

@@ -3,7 +3,18 @@
 #include "gemm.h"
 #include <math.h>
 #include <stdint.h>
-
+#define ENTRYCOUNT (5)
+struct indices_entry
+{
+  int stride;
+  int pad;
+  int ksize;
+  int height;
+  int width;
+  int* ptr;
+};
+struct indices_entry lookup_table[ENTRYCOUNT];
+int current_count = 0;
 int conv_out_width(struct layer* l)
 {
   return (l->w + 2*l->pad - l->size) / l->stride + 1;
@@ -13,7 +24,7 @@ int conv_out_height(struct layer* l)
   return (l->h + 2*l->pad - l->size) / l->stride + 1;
 }
 
-void im2col_id(struct layer* l, int size)
+void im2col_id(struct layer* l)
 {
   int height_col = l->output_h;
   int width_col = l->output_w;
@@ -23,6 +34,23 @@ void im2col_id(struct layer* l, int size)
   int pad = l->pad;
   int stride = l->stride;
   int output_shape = height_col * width_col * ksize * ksize;
+
+  if (ksize == 1 && pad == 0 && stride == 1)
+    {
+      l->indices = NULL;
+      return;
+    }
+  for (int i = 0; i < current_count; i++)
+    {
+      struct indices_entry* ie = &lookup_table[i];
+      if (ie->stride == stride && ie->pad == pad && ie->ksize == ksize &&
+          ie->height == height && ie->width == width)
+        {
+          //printf("found\n");
+          l->indices = ie->ptr;
+          return;
+        }
+    }
 
   int* id = safe_malloc (output_shape * sizeof(int));
 
@@ -50,7 +78,7 @@ void im2col_id(struct layer* l, int size)
                     {
                       if (input_col >= 0 && input_col < width)
                         {
-                          *(col_id_it++) = (im_ptr + input_row*width + input_col)*size;
+                          *(col_id_it++) = (im_ptr + input_row*width + input_col)*l->prec;
                         }
                       else
                         {
@@ -64,6 +92,10 @@ void im2col_id(struct layer* l, int size)
         }
     }
   l->indices = id;
+  struct indices_entry ie = {stride, pad, ksize, height, width, id};
+  if (current_count < ENTRYCOUNT)
+    lookup_table[current_count++] = ie;
+  
 }
 float im2col_get_pixel(float *im, int height, int width, int channels,
                         int row, int col, int channel, int pad)
@@ -115,12 +147,18 @@ void convolutional_precomp_forward_16(struct layer* l, int16_t* src, int16_t* de
 
   int srcblock = l->h*l->w;
   int destblock = l->output_h*l->output_w*l->size*l->size;
-  for (int c = 0; c < l->c; c++) {
-    gather_16(l->indices, src + srcblock*c, b + destblock*c, destblock);
-  }
-  //gather_16(l->indices, src, b, l->output_h*l->output_w*l->size*l->size*l->c);
-  gemm_16(m,n,k,a,b,c);
-  //printf("%hu %hu %hu\n", dest[80000], dest[80001], dest[80002]);
+  if (l->indices)
+    {
+      for (int c = 0; c < l->c; c++)
+        gather_16(l->indices, src + srcblock*c, b + destblock*c, destblock);
+      //gather_16(l->indices, src, b, l->output_h*l->output_w*l->size*l->size*l->c);
+      gemm_16(m,n,k,a,b,c);
+      //printf("%hu %hu %hu\n", dest[80000], dest[80001], dest[80002]);
+    }
+  else
+    {
+      gemm_16(m,n,k,a,src,c);
+    }
 }
 
 void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, float* workspace)
@@ -135,11 +173,16 @@ void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, 
   float *c = dest;
   int srcblock = l->h*l->w;
   int destblock = l->output_h*l->output_w*l->size*l->size;
-  
-  for (int c = 0; c < l->c; c++) {
-    gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
-  }
-  gemm_32(m,n,k,a,b,c);
+  if (l->indices)
+    {
+      for (int c = 0; c < l->c; c++)
+        gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
+      gemm_32(m,n,k,a,b,c);
+    }
+  else
+    {
+      gemm_32(m,n,k,a,src,c);
+    }
   //printf("%.3f conv\n", dest[0]);
 }
 
@@ -153,7 +196,7 @@ void convolutional_forward_32(struct layer* l, float* src, float* dest, float* w
   float *a = l->weights_32;
   float *b = workspace;
   float *c = dest;
-
+  
   im2col_32(src, l->c, l->h, l->w, l->size, l->stride, l->pad, b);
   gemm_32(m,n,k,a,b,c);
   

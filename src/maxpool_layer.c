@@ -5,8 +5,9 @@
 #include <stdint.h>
 
 
-void maxpool_darknet_id_16(struct layer* l)
+void maxpool_darknet_id(struct layer* l)
 {
+  int size = l->prec;
   int h = l->output_h;
   int w = l->output_w;
   int c = l->output_c;
@@ -32,7 +33,7 @@ void maxpool_darknet_id_16(struct layer* l)
                                    cur_w >= 0 && cur_w < l->w);
                       int* off = l->indices + out_shape * (n * l->size + m);
                       if (valid)
-                        off[out_index] = index * sizeof(int16_t);
+                        off[out_index] = index * size;
                       else
                         off[out_index] = -1;
 

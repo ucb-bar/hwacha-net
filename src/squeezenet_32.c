@@ -324,7 +324,7 @@ int main(int argc, char** argv)
   {
     size_t max_io = max_size(layers, NLAYERS);
     size_t max_ws = max_workspace(layers, NLAYERS);
-    printf("%lu %lu\n", max_io, max_ws);
+    //printf("%lu %lu\n", max_io, max_ws);
     input = safe_malloc(sizeof(float)*max_io);
     output = safe_malloc(sizeof(float)*max_io);
     workspace = safe_malloc(sizeof(float)*max_ws);
@@ -340,7 +340,7 @@ int main(int argc, char** argv)
     fread(input, sizeof(float), 227*227*3, fp);
     fclose(fp);
     
-    printf("%.3f input\n", input[0]);
+    //printf("%.3f input\n", input[0]);
     /* for (int i = 0; i < 227*227*3; i++) */
     /*   printf("%d %.5f\n", i, input[i]); */
       

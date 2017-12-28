@@ -25,14 +25,14 @@ void setup_layers(struct layer* l1, struct layer* l2)
         l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size;
         l2->nweights = l2->size * l2->size * l2->c * l2->n;
-        im2col_id(l2, l2->prec);
+        im2col_id(l2);
         break;
       }
     case MAXPOOL_DARKNET:
       {
         l2->output_w = (l2->w + 2*l2->pad)/l2->stride;
         l2->output_h = (l2->h + 2*l2->pad)/l2->stride;
-        //maxpool_darknet_id_16(l2);
+        //maxpool_darknet_id(l2);
         break;
       }
     case BATCHNORM:

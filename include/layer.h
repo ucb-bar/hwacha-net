@@ -22,6 +22,8 @@ typedef enum {
   BIAS,
   RELU,
   LEAKY,
+  CONCAT,
+  AVERAGE
 } LAYER_TYPE;
 
 struct layer;
@@ -57,6 +59,7 @@ struct layer
 };
 
 void setup_layers(struct layer*, struct layer*);
+void concat_layers(struct layer*, struct layer*, struct layer*);
 size_t max_size(struct layer**, int);
 size_t max_workspace(struct layer**, int);
 void load_layers(struct layer**, int, FILE*);

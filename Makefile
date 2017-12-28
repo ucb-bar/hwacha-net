@@ -25,12 +25,16 @@ TINYYOLO_16 = tiny_yolo_16
 TINYYOLO_32_OBJ = $(addprefix $(OBJDIR), tiny_yolo_32.o)
 TINYYOLO_32 = tiny_yolo_32
 
+SQUEEZENET_32_OBJ = $(addprefix $(OBJDIR), squeezenet_32.o)
+SQUEEZENET_32 = squeezenet_32
+
 TEST_OBJ = $(addprefix $(OBJDIR), test.o)
 TEST = test
 
-EXECS = tiny_yolo_16 tiny_yolo_32 test
+EXECS = tiny_yolo_16 tiny_yolo_32 test squeezenet_32
 DUMPS = $(addpostfix .dump, $(EXECS))
 
+default : all
 all : $(EXECS) $(DUMPS)
 
 %.dump : %
@@ -45,6 +49,10 @@ $(TEST): $(TEST_OBJ) $(OBJS)
 
 $(TINYYOLO_32): $(TINYYOLO_32_OBJ) $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(SQUEEZENET_32): $(SQUEEZENET_32_OBJ) $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
 
 $(OBJDIR)%.o: %.c $(DEPS)
 	$(CC) $(COMMON) $(CFLAGS) -c $< -o $@

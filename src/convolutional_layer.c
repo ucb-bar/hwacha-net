@@ -4,13 +4,13 @@
 #include <math.h>
 #include <stdint.h>
 
-int conv_out_width(struct layer l)
+int conv_out_width(struct layer* l)
 {
-  return (l.w + 2*l.pad - l.size) / l.stride + 1;
+  return (l->w + 2*l->pad - l->size) / l->stride + 1;
 }
-int conv_out_height(struct layer l)
+int conv_out_height(struct layer* l)
 {
-  return (l.h + 2*l.pad - l.size) / l.stride + 1;
+  return (l->h + 2*l->pad - l->size) / l->stride + 1;
 }
 
 void im2col_id(struct layer* l, int size)
@@ -140,13 +140,11 @@ void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, 
     gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
   }
   gemm_32(m,n,k,a,b,c);
-  printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
+  //printf("%.3f conv\n", dest[0]);
 }
 
 void convolutional_forward_32(struct layer* l, float* src, float* dest, float* workspace)
 {
-  int i, j;
-
   fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
 
   int m = l->n;
@@ -159,5 +157,5 @@ void convolutional_forward_32(struct layer* l, float* src, float* dest, float* w
   im2col_32(src, l->c, l->h, l->w, l->size, l->stride, l->pad, b);
   gemm_32(m,n,k,a,b,c);
   
-  printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
+  //printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
 }

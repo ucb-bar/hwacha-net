@@ -130,6 +130,13 @@ vleaky_activate_32:
         @vp1    vsw vv0, va0
         vstop
 
+        .globl vrelu_activate_32
+vrelu_activate_32:
+        vlw vv0, va0
+        vfmax.s vv0, vv0, vs0
+        vsw vv0, va0
+        vstop
+
         .globl vmax_16_init
         .globl vmax_16_iter
         .globl vmax_16_st

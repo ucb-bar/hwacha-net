@@ -20,8 +20,8 @@ void setup_layers(struct layer* l1, struct layer* l2)
     {
     case CONVOLUTIONAL:
       {
-        l2->output_w = conv_out_width(*l2);
-        l2->output_h = conv_out_height(*l2);
+        l2->output_w = conv_out_width(l2);
+        l2->output_h = conv_out_height(l2);
         l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size;
         l2->nweights = l2->size * l2->size * l2->c * l2->n;
@@ -32,7 +32,6 @@ void setup_layers(struct layer* l1, struct layer* l2)
       {
         l2->output_w = (l2->w + 2*l2->pad)/l2->stride;
         l2->output_h = (l2->h + 2*l2->pad)/l2->stride;
-        l2->output_c = l2->c;
         //maxpool_darknet_id_16(l2);
         break;
       }
@@ -53,7 +52,13 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case MAXPOOL:
       {
-        printf("ERROR\n");
+        l2->output_w = conv_out_width(l2);
+        l2->output_h = conv_out_height(l2);
+        break;
+      }
+    case AVERAGE:
+      {
+        l2->output_w = l2->output_h = 1;
         break;
       }
     default:
@@ -64,21 +69,48 @@ void setup_layers(struct layer* l1, struct layer* l2)
   l2->input_size = l2->h * l2->c * l2->w;
   l2->output_size = l2->output_w * l2->output_h * l2->output_c;
   //printf("%d %d %d \t %d %d %d \n", l2->h, l2->w, l2->c, l2->output_h, l2->output_w, l2->output_c);
-
 }
 
+void concat_layers(struct layer* l1, struct layer* l2, struct layer* l3)
+{
+  if (l3->type != CONCAT)
+    {
+      printf("ERROR NOT CONCAT LAYER\n");
+      return;
+    }
+  if (l1->h != l2->h ||
+      l1->w != l2->w ||
+      l1->prec != l2->prec)
+    {
+      printf("ERROR DIM NOT ALIGNED\n");
+      return;
+    }
+  l3->prec = l1->prec;
+  l3->h = l1->h;
+  l3->w = l1->w;
+  l3->c = -1;
+  l3->workspace_size = 0;
+  l3->nweights = 0;
+  l3->output_w = l3->w;
+  l3->output_h = l3->h;
+  l3->output_c = l1->c + l2->c;
+  l3->input_size = 0;
+  l2->output_size = l2->output_w * l2->output_h * l2->output_c;
+  //printf("%d %d %d + %d \t %d %d %d \n", l2->h, l2->w, l1->c, l2->c, l3->output_h, l3->output_w, l3->output_c);
+  
+}
 void load_layers(struct layer** layers, int n, FILE* fp)
 {
   for (int i = 0; i < n; i++) {
     layer* l = layers[i];
     switch (l->prec)
       {
-      case DOUBLE : {break;}
+      case DOUBLE : { break;}
       case SINGLE :
         {
           l->weights_32 = safe_malloc(l->nweights * sizeof(float));
           fread(l->weights_32, sizeof(float), l->nweights, fp);
-          //if (l->nweights) printf("%.3f\n", l->weights_32[0]);
+          //if (l->nweights) printf("%.6f\n", l->weights_32[0]);
           break;
         }
       case HALF :
@@ -128,7 +160,7 @@ void batchnorm_forward_32(struct layer* l, float* src, float* dest)
   normalize_32(src, rolling_mean, rolling_variance, l->output_c, l->output_h*l->output_w);
   for(int i = 0; i < l->output_c; ++i)
     scale_32 (&src[i*l->output_h*l->output_w], scales[i], l->output_h*l->output_w);
-  printf("%.3f %.3f %.3f \n", src[0], src[1], src[2]);
+  //printf("%.3f %.3f %.3f batchnorm \n", src[0], src[1], src[2]);
 }
 void bias_forward_16(struct layer* l, int16_t* src)
 {
@@ -139,7 +171,7 @@ void bias_forward_32(struct layer* l, float* src)
 {
   for(int i = 0; i < l->output_c; ++i)
     add_32 (&src[i*l->output_h*l->output_w], l->weights_32[i], l->output_h*l->output_w);
-  printf("%.3f\n", src[0]);
+  //  printf("%.3f bias\n", src[0]);
 }
 
 void leaky_forward_16(struct layer* l, int16_t* src)
@@ -175,7 +207,7 @@ void leaky_forward_32(struct layer* l, float* src)
       i += consumed;
     }
   asm volatile ("fence");
-  printf("%.3f %.3f %.3f \n", src[0], src[1], src[2]);
+  //printf("%.3f %.3f %.3f leaky \n", src[0], src[1], src[2]);
 }
 
 int entry_index(struct layer* l, int location, int entry)
@@ -271,7 +303,36 @@ void region_forward_32(struct layer* l, float* src, float* dest, float* workspac
   index = entry_index(l, 0, 4 + 1);
   softmax_cpu(src + index, l->size, l->n, l->h*l->w*l->c/l->n, l->w*l->h, l->w*l->h, dest + index);
 }
-
+void relu_forward_32(struct layer* l, float* src)
+{
+  setvcfg(0, 1, 0, 1);
+  int len = l->output_h*l->output_w*l->output_c;
+  for (int i = 0; i < len; )
+    {
+      int consumed = setvlen(len - i);
+      asm volatile ("vmca va0, %0" : : "r" (&src[i]));
+      asm volatile ("la t0, vrelu_activate_32" : : : "t0");
+      asm volatile ("lw t1, 0(t0)");
+      asm volatile ("vf 0(t0)");
+      i += consumed;
+    }
+  asm volatile ("fence");
+  //printf("%.3f %.3f %.3f relu \n", src[0], src[1], src[2]);
+}
+void average_forward_32(struct layer* l, float* src)
+{
+  float count = l->h*l->w;
+  float* srcptr = src;
+  for (int k = 0; k < l->c; k++)
+    {
+      float acc = 0.0;
+      for (int i = 0; i < l->h*l->w; i++)
+        acc += srcptr[i];
+      src[k] = acc / count;
+      srcptr += l->h*l->w;
+    }
+  //printf("%.3f average\n", src[0]);
+}
 void layer_forward_16(struct layer* layer, int16_t* src, int16_t* dest, int16_t* workspace)
 {
   switch (layer->type)
@@ -282,7 +343,7 @@ void layer_forward_16(struct layer* layer, int16_t* src, int16_t* dest, int16_t*
     case REGION: { region_forward_16(layer, src, dest, workspace); break; }
     case BIAS: { bias_forward_16(layer, src); break; }
     case LEAKY: { leaky_forward_16(layer, src); break; }
-    default: { break; }
+    default: { printf("Unknown layer\n"); break; }
     }
 }
 void layer_forward_32(struct layer* layer, float* src, float* dest, float* workspace)
@@ -295,7 +356,10 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
     case REGION: { region_forward_32(layer, src, dest, workspace); break; }
     case BIAS: { bias_forward_32(layer, src); break; }
     case LEAKY: { leaky_forward_32(layer, src); break; }
-    default: { break; }
+    case RELU: { relu_forward_32(layer, src); break; }
+    case MAXPOOL: {maxpool_darknet_forward_32(layer, src, dest); break;}
+    case AVERAGE: {average_forward_32(layer, src); break;}
+    default: { printf("Unknown layer\n"); break; }
     }
 }
 void layer_forward_64(struct layer* layer, double* src, double* dest, double* workspace)
@@ -313,5 +377,5 @@ void layer_forward(struct layer* layer, void* src, void* dest, void* workspace)
     case DOUBLE: {layer_forward_64(layer, src, dest, workspace); break;}
     }
   cycles = rdcycle() - cycles;
-  printf("%lu\n", cycles);
+  //printf("%lu\n", cycles);
 }

@@ -134,7 +134,7 @@ void load_layers(struct layer** layers, int n, FILE* fp)
 {
   for (int i = 0; i < n; i++)
     {
-      printf("Loading layer %d\n", i);
+      //printf("Loading layer %d\n", i);
       layer* l = layers[i];
       switch (l->prec)
         {
@@ -143,7 +143,7 @@ void load_layers(struct layer** layers, int n, FILE* fp)
           {
             l->weights_32 = safe_malloc(l->nweights * sizeof(float));
             fread(l->weights_32, sizeof(float), l->nweights, fp);
-            if (l->nweights) printf("%.6f %.6f %d\n", l->weights_32[0], l->weights_32[1], l->nweights);
+            //if (l->nweights) printf("%.6f %.6f %d\n", l->weights_32[0], l->weights_32[1], l->nweights);
             break;
           }
         case HALF :
@@ -157,15 +157,15 @@ void load_layers(struct layer** layers, int n, FILE* fp)
 
       l->encoded_indices = safe_malloc(l->nids * sizeof(int8_t));
       fread(l->encoded_indices, sizeof(int8_t), l->nids, fp);
-      if (l->nids) printf("%u %d\n", (unsigned char) l->encoded_indices[0], l->nids);
+      //if (l->nids) printf("%u %d\n", (unsigned char) l->encoded_indices[0], l->nids);
 
       l->encoded_indptr = safe_malloc(l->nindptr * sizeof(int8_t));
       fread(l->encoded_indptr, sizeof(int8_t), l->nindptr, fp);
-      if (l->nindptr) printf("%u %d\n", (unsigned char) l->encoded_indptr[0], l->nindptr);
+      //if (l->nindptr) printf("%u %d\n", (unsigned char) l->encoded_indptr[0], l->nindptr);
 
       l->encoded_data = safe_malloc(l->ndata * sizeof(int8_t));
       fread(l->encoded_data, sizeof(int8_t), l->ndata, fp);
-      if (l->ndata) printf("%u %d\n", (unsigned char) l->encoded_data[0], l->ndata);
+      //if (l->ndata) printf("%u %d\n", (unsigned char) l->encoded_data[0], l->ndata);
     }
 }
 
@@ -215,7 +215,7 @@ void bias_forward_32(struct layer* l, float* src)
 {
   for(int i = 0; i < l->output_c; ++i)
     add_32 (&src[i*l->output_h*l->output_w], l->weights_32[i], l->output_h*l->output_w);
-  //  printf("%.3f bias\n", src[0]);
+  //printf("%.3f bias\n", src[0]);
 }
 
 void leaky_forward_16(struct layer* l, int16_t* src)
@@ -396,6 +396,7 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
     {
     case CONVOLUTIONAL: { convolutional_precomp_forward_32(layer, src, dest, workspace); break; }
     case CONVOLUTIONAL_ENCODED: {convolutional_precomp_encoded_forward_32(layer, src, dest, workspace); break; };
+    case CONVOLUTIONAL_ENCODED_COMPRESSED: {convolutional_precomp_encoded_compressed_forward_32(layer, src, dest, workspace); break; };
     case MAXPOOL_DARKNET: { maxpool_darknet_forward_32(layer, src, dest); break; }
     case BATCHNORM: { batchnorm_forward_32(layer, src, dest); break; }
     case REGION: { region_forward_32(layer, src, dest, workspace); break; }

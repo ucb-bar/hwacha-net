@@ -10,9 +10,9 @@ void gemm_encoded_32(int M, int N, int K,
                      unsigned char* A, float* B, float* C,
                      float* codebook);
 void gemm_encoded_compressed_32(int M, int N, int K,
-                                unsigned char* indices,
-                                unsigned char* indptr,
-                                unsigned char* dtaa,
+                                uint8_t* indices,
+                                uint8_t* indptr,
+                                uint8_t* data,
                                 float* B, float* C,
                                 float* codebook);
 

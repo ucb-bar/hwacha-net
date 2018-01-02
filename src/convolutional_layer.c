@@ -210,7 +210,7 @@ void convolutional_precomp_encoded_forward_32(struct layer*l, float* src, float*
       gemm_encoded_32(m,n,k,(unsigned char*) a,src,c,codebook);
     }
 
-  //printf("%.3f conv\n", dest[0]);
+  //printf("%.3f %.3f conv encoded\n", dest[0], dest[l->output_size-1]);
 }
 
 void convolutional_forward_32(struct layer* l, float* src, float* dest, float* workspace)
@@ -228,4 +228,34 @@ void convolutional_forward_32(struct layer* l, float* src, float* dest, float* w
   gemm_32(m,n,k,a,b,c);
   
   //printf("%.3f %.3f %.3f %.3f %.3f %.3f\n", dest[0], dest[1], dest[2], l->weights_32[0], l->weights_32[1], l->weights_32[2]);
+}
+void convolutional_precomp_encoded_compressed_forward_32(struct layer* l, float* src, float* dest, float* workspace)
+{
+  fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
+  int m = l->n;
+  int k = l->size*l->size*l->c;
+  int n = l->output_w*l->output_h;
+
+  float *b = workspace;
+  float *c = dest;
+  float* codebook = l->weights_32;
+  int srcblock = l->h*l->w;
+  int destblock = l->output_h*l->output_w*l->size*l->size;
+  //printf("%d %d %d %d-> %d %d %d\n", l->h, l->w, l->c, l->size, l->output_h, l->output_w, l->output_c);
+  if (l->indices)
+    {
+      for (int c = 0; c < l->c; c++)
+        gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
+      gemm_encoded_compressed_32(m,n,k,
+                                 (uint8_t*) l->encoded_indices, (uint8_t*)l->encoded_indptr, (uint8_t*)l->encoded_data,
+                                 b,c,codebook);
+    }
+  else
+    {
+      gemm_encoded_compressed_32(m,n,k,
+                                 (uint8_t*) l->encoded_indices, (uint8_t*)l->encoded_indptr, (uint8_t*)l->encoded_data,
+                                 b,c,codebook);
+    }
+  //printf("%.3f %.3f conv encoded compressed\n", dest[0], dest[l->output_size-1]);
+
 }

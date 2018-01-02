@@ -341,43 +341,6 @@ int main(int argc, char** argv)
     fclose(fp);
     
     printf("%.3f input\n", input[0]);
-    /* for (int i = 0; i < 227*227*3; i++) */
-    /*   printf("%d %.5f\n", i, input[i]); */
-      
-    /* unsigned char* data = stbi_load(fn, &w, &h, &c, 3); */
-    /* printf("loaded\n"); */
-    /* if (w != conv1.w || h != conv1.h || c != conv1.c) */
-    /*   { */
-    /*     printf("Bad image size\n"); */
-    /*     return 0; */
-    /*   } */
-    /* if (!data) */
-    /*   { */
-    /*     printf("Image load failed\n"); */
-    /*     return 0; */
-    /*   } */
-    /* //    printf("%s\n", stbi_failure_reason()); */
-    /* //    return; */
-    /* int i, j, k; */
-
-    /* float s; */
-    /* printf("%d %d %d\n", w, h, c); */
-    /* float* buf = (float*) data; */
-    /* for(k = 0; k < c; ++k) */
-    /*   for(j = 0; j < h; ++j) */
-    /*     for(i = 0; i < w; ++i) */
-    /*       { */
-    /*         int dst_index = i + w*j + w*h*k; */
-    /*         int src_index = k + c*i + c*w*j; */
-    /*         //input[dst_index] = 0; */
-    /*         printf("%d %d %d %d %x", src_index, i, j, k, buf + src_index); */
-    /*         float f = buf[src_index]; */
-    /*         printf(" loaded\n"); */
-    /*         s += f; */
-    /*         buf[src_index] = 0; */
-    /*         //input[dst_index] = data[src_index] - means[k]; */
-    /*       } */
-    /* free(data); */
   }
   {
     layer_forward(&conv1, input, output, workspace); swap(&input, &output);

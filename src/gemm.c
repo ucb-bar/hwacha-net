@@ -1,5 +1,6 @@
 #include "gemm.h"
 #include "util.h"
+#include <stdio.h>
 
 void gemm_16(int M, int N, int K,
              int16_t* A, int16_t* B, int16_t* C)
@@ -311,50 +312,9 @@ void gemm_encoded_32(int M, int N, int K,
 
           asm volatile ("vf 0(%0)" : : "r" (pre_vfblockaddr));
           int j = 0;
-          /* for (j = 0; j + 4 <= K; j+=4) */
-          /*   { */
-
-          /*     // B row 1, 2, 3, 4 */
-          /*     asm volatile ("vmca va4, %0" : : "r" (&B[j*ldb+k])); */
-          /*     asm volatile ("vmca va5, %0" : : "r" (&B[(j+1)*ldb+k])); */
-          /*     asm volatile ("vmca va6, %0" : : "r" (&B[(j+2)*ldb+k])); */
-          /*     asm volatile ("vmca va7, %0" : : "r" (&B[(j+3)*ldb+k])); */
-
-          /*     // A row 1, 2, 3, 4 */
-          /*     asm volatile ("vmcs vs1, %0\n" */
-          /*                   "vmcs vs2, %1\n" */
-          /*                   "vmcs vs3, %2\n" */
-          /*                   "vmcs vs4, %3\n" */
-
-          /*                   "vmcs vs5, %4\n" */
-          /*                   "vmcs vs6, %5\n" */
-          /*                   "vmcs vs7, %6\n" */
-          /*                   "vmcs vs8, %7\n" */
-
-          /*                   "vmcs vs9, %8\n" */
-          /*                   "vmcs vs10, %9\n" */
-          /*                   "vmcs vs11, %10\n" */
-          /*                   "vmcs vs12, %11\n" */
-
-          /*                   "vmcs vs13, %12\n" */
-          /*                   "vmcs vs14, %13\n" */
-          /*                    "vmcs vs15, %14\n" */
-          /*                   "vmcs vs16, %15" */
-          /*                   : */
-          /*                   : "r" (codebook[A[j+(i+0)*lda+0]]), "r" (codebook[A[j+(i+0)*lda+1]]), "r" (codebook[A[j+(i+0)*lda+2]]), "r" (codebook[A[j+(i+0)*lda+3]]), */
-          /*                     "r" (codebook[A[j+(i+1)*lda+0]]), "r" (codebook[A[j+(i+1)*lda+1]]), "r" (codebook[A[j+(i+1)*lda+2]]), "r" (codebook[A[j+(i+1)*lda+3]]), */
-          /*                     "r" (codebook[A[j+(i+2)*lda+0]]), "r" (codebook[A[j+(i+2)*lda+1]]), "r" (codebook[A[j+(i+2)*lda+2]]), "r" (codebook[A[j+(i+2)*lda+3]]), */
-          /*                     "r" (codebook[A[j+(i+3)*lda+0]]), "r" (codebook[A[j+(i+3)*lda+1]]), "r" (codebook[A[j+(i+3)*lda+2]]), "r" (codebook[A[j+(i+3)*lda+3]]) */
-          /*                   ); */
-
-
-          /*     asm volatile ("vf 0(%0)" : : "r" (main_vfblockaddr)); */
-          /*   } */
-
           for ( ; j < K; j++)
             {
               asm volatile ("vmca va4, %0" : : "r" (&B[j*ldb+k]));
-
               asm volatile ("vmcs vs1, %0\n"
                             "vmcs vs5, %1\n"
                             "vmcs vs9, %2\n"
@@ -395,14 +355,14 @@ void gemm_encoded_32(int M, int N, int K,
         }
     }
   asm volatile ("fence");
-
 }
 
 void gemm_encoded_compressed_32(int M, int N, int K,
-                                unsigned char* indices, unsigned char* indptr, unsigned char* data,
+                                uint8_t* indices, uint8_t* indptr, uint8_t* data,
                                 float* B, float* C,
                                 float* codebook)
 {
+  //printf("%d %d %d\n", M, N, K);
   int lda = K;
   int ldb = N;
   int ldc = N;
@@ -425,9 +385,8 @@ void gemm_encoded_compressed_32(int M, int N, int K,
   asm volatile ("lw t0, 0(%0)" : : "r" (post_vfblockaddr) : "t0");
   asm volatile ("la %0, sgemm_opt_v_4_4_post_edge" : "=r" (post_edge_vfblockaddr));
   asm volatile ("lw t0, 0(%0)" : : "r" (post_edge_vfblockaddr) : "t0");
-
   int nrows = M;
-  int ncols = N;
+  int ncols = K;
   int row = 0;
   int indptrptr = 1;
   int dataptr = indptr[0];
@@ -488,6 +447,7 @@ void gemm_encoded_compressed_32(int M, int N, int K,
           int cold = indices[rowdptr];
           for ( ; col < ncols; col++)
             {
+              
               int used = 0;
               asm volatile ("vmcs vs1, %0\n" : : "r" (0));
               asm volatile ("vmcs vs5, %0\n" : : "r" (0));
@@ -521,7 +481,7 @@ void gemm_encoded_compressed_32(int M, int N, int K,
                 {
                   asm volatile ("vmca va4, %0" : : "r" (&B[col*ldb+k]));
                   asm volatile ("vf 0(%0)" : : "r" (main_edge0_vfblockaddr));
-                }
+                } 
             }
           asm volatile ("vf 0(%0)" : : "r" (post_vfblockaddr));
           k += consumed;

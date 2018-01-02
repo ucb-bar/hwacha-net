@@ -349,7 +349,6 @@ int main(int argc, char** argv)
     load_layers(layers, NLAYERS, fp);
     fclose(fp);
   }
-  return 0;
   {
 
     FILE* fp = fopen(argv[1], "rb");
@@ -377,7 +376,6 @@ int main(int argc, char** argv)
     layer_forward(&fire2_bias3, input + fire2_conv2.output_size, output, workspace);
     layer_forward(&fire2_relu3, input + fire2_conv2.output_size, output, workspace);
 
-    
     layer_forward(&fire3_conv1, input, output, workspace); swap(&input, &output);
     layer_forward(&fire3_bias1, input, output, workspace);
     layer_forward(&fire3_relu1, input, output, workspace);
@@ -461,7 +459,7 @@ int main(int argc, char** argv)
     layer_forward(&fire9_conv1, input, output, workspace); swap(&input, &output);
     layer_forward(&fire9_bias1, input, output, workspace);
     layer_forward(&fire9_relu1, input, output, workspace);
-
+    
     layer_forward(&fire9_conv2, input, output, workspace);
     layer_forward(&fire9_conv3, input, output + fire9_conv2.output_size, workspace);
     swap(&input, &output);

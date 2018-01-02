@@ -14,6 +14,8 @@ typedef enum {
 typedef enum {
   ERROR,
   CONVOLUTIONAL,
+  CONVOLUTIONAL_ENCODED,
+  CONVOLUTIONAL_ENCODED_COMPRESSED,
   MAXPOOL,
   MAXPOOL_DARKNET,
   BATCHNORM,
@@ -36,16 +38,24 @@ struct layer
   int h;
   int w;
   int c;
-  
-  
+
+
   int stride;
   int size;
   int n;
   int pad;
 
+  int nids;
+  int nindptr;
+  int ndata;
+
   int16_t* weights_16;
   float* weights_32;
   int* indices;
+
+  int8_t* encoded_indices;
+  int8_t* encoded_indptr;
+  int8_t* encoded_data;
 
   size_t input_size;
   size_t workspace_size;

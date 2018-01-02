@@ -88,6 +88,7 @@ sgemm_opt_v_4_4_pre_edge:
 	vstop
 
 sgemm_opt_v_4_4:
+        vstop
 	vlw vv4, va4                    # b0
 	vfmadd.s vv0, vv4, vs1, vv0     # c0 += a00 * b0
 	vfmadd.s vv1, vv4, vs5, vv1     # c1 += a10 * b0

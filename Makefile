@@ -11,7 +11,7 @@ ARFLAGS =  rcs
 OPTS =	   -O3
 LDFLAGS =  -lm
 COMMON =   -Iinclude/
-CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -g
+CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -s 
 CFLAGS +=  $(OPTS)
 
 OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o
@@ -19,20 +19,9 @@ OBJS = $(addprefix $(OBJDIR), $(OBJ))
 
 DEPS = $(wildcard include/*.h) Makefile obj
 
-TINYYOLO_16_OBJ = $(addprefix $(OBJDIR), tiny_yolo_16.o)
-TINYYOLO_16 = tiny_yolo_16
-
-TINYYOLO_32_OBJ = $(addprefix $(OBJDIR), tiny_yolo_32.o)
-TINYYOLO_32 = tiny_yolo_32
-
-SQUEEZENET_32_OBJ = $(addprefix $(OBJDIR), squeezenet_32.o)
-SQUEEZENET_32 = squeezenet_32
-
-TEST_OBJ = $(addprefix $(OBJDIR), test.o)
-TEST = test
-
-EXECS = tiny_yolo_16 tiny_yolo_32 test squeezenet_32
-DUMPS = $(addpostfix .dump, $(EXECS))
+EXECS = tiny_yolo_16 tiny_yolo_32 test squeezenet_32 squeezenet_encoded_32 squeezenet_encoded_compressed_32
+EXECOBJS = $(addsuffix .o, $(addprefix $(OBJDIR), $(EXECS)))
+DUMPS = $(addsuffix .dump, $(EXECS))
 
 default : all
 all : $(EXECS) $(DUMPS)
@@ -41,18 +30,23 @@ all : $(EXECS) $(DUMPS)
 	$(OBJDUMP) -d $^ > $@
 
 
-$(TINYYOLO_16): $(TINYYOLO_16_OBJ) $(OBJS)
+tiny_yolo_16: ./obj/tiny_yolo_16.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(TEST): $(TEST_OBJ) $(OBJS)
+tiny_yolo_32: ./obj/tiny_yolo_32.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(TINYYOLO_32): $(TINYYOLO_32_OBJ) $(OBJS)
+test: ./obj/test.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-$(SQUEEZENET_32): $(SQUEEZENET_32_OBJ) $(OBJS)
+squeezenet_32: ./obj/squeezenet_32.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+squeezenet_encoded_32: ./obj/squeezenet_encoded_32.o $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+squeezenet_encoded_compressed_32: ./obj/squeezenet_encoded_compressed_32.o $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(OBJDIR)%.o: %.c $(DEPS)
 	$(CC) $(COMMON) $(CFLAGS) -c $< -o $@
@@ -66,5 +60,5 @@ obj:
 .PHONY: clean
 
 clean:
-	rm -rf $(OBJS) $(TINYYOLO) $(TINYYOLO_OBJ)
+	rm -rf $(OBJS) $(EXECS) $(DUMPS) $(EXECOBJS)
 

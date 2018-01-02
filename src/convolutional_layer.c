@@ -186,6 +186,33 @@ void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, 
   //printf("%.3f conv\n", dest[0]);
 }
 
+void convolutional_precomp_encoded_forward_32(struct layer*l, float* src, float* dest, float* workspace)
+{
+  fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
+  int m = l->n;
+  int k = l->size*l->size*l->c;
+  int n = l->output_w*l->output_h;
+
+  int8_t *a = l->encoded_indices;
+  float *b = workspace;
+  float *c = dest;
+  float* codebook = l->weights_32;
+  int srcblock = l->h*l->w;
+  int destblock = l->output_h*l->output_w*l->size*l->size;
+  if (l->indices)
+    {
+      for (int c = 0; c < l->c; c++)
+        gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
+      gemm_encoded_32(m,n,k,(unsigned char*) a,b,c,codebook);
+    }
+  else
+    {
+      gemm_encoded_32(m,n,k,(unsigned char*) a,src,c,codebook);
+    }
+
+  //printf("%.3f conv\n", dest[0]);
+}
+
 void convolutional_forward_32(struct layer* l, float* src, float* dest, float* workspace)
 {
   fill_32(l->output_h*l->output_w*l->output_c, 0, dest);

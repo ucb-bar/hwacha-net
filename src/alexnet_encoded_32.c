@@ -50,15 +50,15 @@ int main(int argc, char** argv)
   layer start;
 
   {
-    conv1.type = conv3.type = CONVOLUTIONAL;
-    conv2.type = conv4.type = conv5.type = CONVOLUTIONAL_GROUPED;
+    conv1.type = conv3.type = CONVOLUTIONAL_ENCODED;
+    conv2.type = conv4.type = conv5.type = CONVOLUTIONAL_GROUPED_ENCODED;
     bias1.type = bias2.type = bias3.type = bias4.type = bias5.type \
       = bias6.type = bias7.type = bias8.type = BIAS;
     relu1.type = relu2.type = relu3.type = relu4.type = relu5.type \
       = relu6.type = relu7.type = RELU;
     norm1.type = norm2.type = NORMALIZATION;
     pool1.type = pool2.type = pool5.type = MAXPOOL;
-    fc6.type = fc7.type = fc8.type = FULLY_CONNECTED;
+    fc6.type = fc7.type = fc8.type = FULLY_CONNECTED_ENCODED;
 
     conv1.n = 96; conv1.size = 11; conv1.stride = 4; conv1.pad = 0;
     norm1.size = 5; norm1.alpha = 0.0001; norm1.beta = 0.75;
@@ -101,10 +101,11 @@ int main(int argc, char** argv)
     workspace = safe_malloc(sizeof(float)*max_ws);
   }
   {
-    FILE* fp = fopen("weights/alexnet_full_single.weights", "rb");
+    FILE* fp = fopen("weights/alexnet_encoded_single.weights", "rb");
     load_layers(layers, NLAYERS, fp);
     fclose(fp);
   }
+
   {
 
     FILE* fp = fopen(argv[1], "rb");

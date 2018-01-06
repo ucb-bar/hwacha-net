@@ -25,7 +25,7 @@ int main (int argc, char** argv)
   setup_layers (&start, &conv1);
 
   printf("%d \n", conv1.output_w);
-  return;
+  return 0;
   size_t max_io = max_size(layers, 1);
   size_t max_ws = max_workspace(layers, 1);
 

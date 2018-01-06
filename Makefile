@@ -11,7 +11,7 @@ ARFLAGS =  rcs
 OPTS =	   -O3
 LDFLAGS =  -lm
 COMMON =   -Iinclude/
-CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -s
+CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -g
 CFLAGS +=  $(OPTS)
 
 OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o fc_layer.o fc_layer_asm.o

@@ -22,9 +22,7 @@ void setup_layers(struct layer* l1, struct layer* l2)
     {
     case CONVOLUTIONAL_ENCODED:
       {
-        l2->output_w = conv_out_width(l2);
-        l2->output_h = conv_out_height(l2);
-        l2->output_c = l2->n;
+        l2->output_w = conv_out_width(l2); l2->output_h = conv_out_height(l2); l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size;
         l2->nweights = 256;
         l2->nids = l2->size * l2->size * l2->c * l2->n;
@@ -34,9 +32,7 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case CONVOLUTIONAL_ENCODED_COMPRESSED:
       {
-        l2->output_w = conv_out_width(l2);
-        l2->output_h = conv_out_height(l2);
-        l2->output_c = l2->n;
+        l2->output_w = conv_out_width(l2); l2->output_h = conv_out_height(l2); l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size;
         l2->nweights = 256;
         l2->ndata = l2->nids - 1;
@@ -45,9 +41,7 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case CONVOLUTIONAL:
       {
-        l2->output_w = conv_out_width(l2);
-        l2->output_h = conv_out_height(l2);
-        l2->output_c = l2->n;
+        l2->output_w = conv_out_width(l2); l2->output_h = conv_out_height(l2); l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size;
         l2->nweights = l2->size * l2->size * l2->c * l2->n;
         l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
@@ -56,12 +50,20 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case CONVOLUTIONAL_GROUPED:
       {
-        l2->output_w = conv_out_width(l2);
-        l2->output_h = conv_out_height(l2);
-        l2->output_c = l2->n;
+        l2->output_w = conv_out_width(l2); l2->output_h = conv_out_height(l2); l2->output_c = l2->n;
         l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size / l2->groups;
         l2->nweights = l2->size * l2->size * l2->c * l2->n / l2->groups;
         l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
+        im2col_id(l2);
+        break;
+      }
+    case CONVOLUTIONAL_GROUPED_ENCODED:
+      {
+        l2->output_w = conv_out_width(l2); l2->output_h = conv_out_height(l2); l2->output_c = l2->n;
+        l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size / l2->groups;
+        l2->nweights = 256;
+        l2->nids = l2->size * l2->size * l2->c * l2->n / l2->groups;
+        l2->nindptr = 0; l2->ndata = 0;
         im2col_id(l2);
         break;
       }
@@ -72,8 +74,7 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case FULLY_CONNECTED:
       {
-        l2->output_w = 1;
-        l2->output_h = 1;
+        l2->output_w = 1; l2->output_h = 1;
         l2->output_c = l2->n;
         l2->nweights = l2->h*l2->c*l2->w*l2->n;
         l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
@@ -81,11 +82,10 @@ void setup_layers(struct layer* l1, struct layer* l2)
       }
     case FULLY_CONNECTED_ENCODED:
       {
-        l2->output_w = 1;
-        l2->output_h = 1;
+        l2->output_w = 1; l2->output_h = 1;
         l2->output_c = l2->n;
-        l2->nweights = 17;
-        l2->nids = l2->h*l2->c*l2->w*l2->n;
+        l2->nweights = 16;
+        l2->nids = l2->h*l2->c*l2->w*l2->n / 2;
         l2->nindptr = 0; l2->ndata = 0;
         break;
       }
@@ -194,7 +194,7 @@ void load_layers(struct layer** layers, int n, FILE* fp)
 
       l->encoded_indices = safe_malloc(l->nids * sizeof(int8_t));
       fread(l->encoded_indices, sizeof(int8_t), l->nids, fp);
-      //if (l->nids) printf("%u %d\n", (unsigned char) l->encoded_indices[0], l->nids);
+      //if (l->nids) printf("%u %d indices \n", (unsigned char) l->encoded_indices[0], l->nids);
 
       l->encoded_indptr = safe_malloc(l->nindptr * sizeof(int8_t));
       fread(l->encoded_indptr, sizeof(int8_t), l->nindptr, fp);
@@ -484,6 +484,7 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
     case CONVOLUTIONAL_ENCODED: { convolutional_precomp_encoded_forward_32(layer, src, dest, workspace); break; };
     case CONVOLUTIONAL_ENCODED_COMPRESSED: { convolutional_precomp_encoded_compressed_forward_32(layer, src, dest, workspace); break; };
     case CONVOLUTIONAL_GROUPED: { convolutional_precomp_grouped_forward_32(layer, src, dest, workspace); break; }
+    case CONVOLUTIONAL_GROUPED_ENCODED: { convolutional_precomp_grouped_encoded_forward_32(layer, src, dest, workspace); break; }
     case MAXPOOL_DARKNET: { maxpool_darknet_forward_32(layer, src, dest); break; }
     case NORMALIZATION: { normalization_forward_32(layer, src, dest, workspace); break; }
     case BATCHNORM: { batchnorm_forward_32(layer, src, dest); break; }

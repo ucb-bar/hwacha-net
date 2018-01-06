@@ -14,12 +14,12 @@ COMMON =   -Iinclude/
 CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -s
 CFLAGS +=  $(OPTS)
 
-OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o
+OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o fc_layer.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 
 DEPS = $(wildcard include/*.h) Makefile obj
 
-EXECS = tiny_yolo_16 tiny_yolo_32 test squeezenet_32 squeezenet_encoded_32 squeezenet_encoded_compressed_32
+EXECS = tiny_yolo_16 tiny_yolo_32 test squeezenet_32 squeezenet_encoded_32 squeezenet_encoded_compressed_32 alexnet_32
 EXECOBJS = $(addsuffix .o, $(addprefix $(OBJDIR), $(EXECS)))
 DUMPS = $(addsuffix .dump, $(EXECS))
 
@@ -46,6 +46,9 @@ squeezenet_encoded_32: ./obj/squeezenet_encoded_32.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 squeezenet_encoded_compressed_32: ./obj/squeezenet_encoded_compressed_32.o $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+alexnet_32: ./obj/alexnet_32.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(OBJDIR)%.o: %.c $(DEPS)

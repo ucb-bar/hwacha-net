@@ -163,6 +163,7 @@ void convolutional_precomp_forward_16(struct layer* l, int16_t* src, int16_t* de
 
 void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, float* workspace)
 {
+  //printf("%d %d %d %d %d %d\n", l->c, l->h, l->w, l->output_c, l->output_w, l->output_h);
   fill_32(l->output_h*l->output_w*l->output_c, 0, dest);
   int m = l->n;
   int k = l->size*l->size*l->c;
@@ -173,17 +174,46 @@ void convolutional_precomp_forward_32(struct layer* l, float* src, float* dest, 
   float *c = dest;
   int srcblock = l->h*l->w;
   int destblock = l->output_h*l->output_w*l->size*l->size;
+  float maxa = 0.0;
+  float maxb = 0.0;
+
   if (l->indices)
     {
       for (int c = 0; c < l->c; c++)
         gather_32(l->indices, src + srcblock*c, b + destblock*c, destblock);
+      for (int i = 0; i < m*k; i++) if (a[i] > maxa) maxa = a[i];
+      for (int i = 0; i < n*k; i++) if (b[i] > maxb) maxb = b[i];
+      //printf("%.3f %.3f maxab\n", maxa, maxb);
+      //printf("%.3f %.3f %.3f a b c\n", a[0], b[0], c[0]);
       gemm_32(m,n,k,a,b,c);
+      //printf("%.3f %.3f %.3f a b c\n", a[0], b[0], c[0]);
     }
   else
     {
       gemm_32(m,n,k,a,src,c);
     }
-  //printf("%.3f conv\n", dest[0]);
+  printf("%.6f %.6f %.6f %.6f conv\n", dest[0], dest[999], src[0], l->weights_32[0]);
+}
+
+void convolutional_precomp_grouped_forward_32(struct layer* l, float* src, float* dest, float* workspace)
+{
+  struct layer temp = *l;
+  temp.c = temp.c / temp.groups;
+  temp.n = temp.n / temp.groups;
+  temp.output_c = temp.output_c / temp.groups;
+
+  int src_batch = l->w*l->h*l->c / l->groups;
+  int dest_batch = l->output_w*l->output_h*l->output_c / l->groups;
+  int weights_batch = l->nweights / l->groups;
+  for (int g = 0; g < temp.groups; g++)
+    {
+      temp.weights_32 = l->weights_32 + g*weights_batch;
+
+      /* for (int i = 0; i < l->nweights / l->groups; i++) */
+      /*   printf("weight %d %.3f\n", i, temp.weights_32[i]); */
+      convolutional_precomp_forward_32(&temp, src + g*src_batch, dest + g*dest_batch, workspace);
+    }
+  printf("%.3f %.3f grouped conv \n", dest[0], dest[999]);
 }
 
 void convolutional_precomp_encoded_forward_32(struct layer*l, float* src, float* dest, float* workspace)

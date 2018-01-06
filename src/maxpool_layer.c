@@ -164,7 +164,7 @@ void maxpool_darknet_forward_32(struct layer* l, float* src, float* dest)
             }
         }
     }
-  //printf("%.3f maxpool\n", src[0]);
+  printf("%.3f %.3f maxpool\n", src[0], src[999]);
   //memcpy_32(dest, src, h*w*c);
   //printf("%hu %hu %hu %hu %hu maxpool\n", src[1000], src[2000], src[4000], src[16000], src[32000]);
 }

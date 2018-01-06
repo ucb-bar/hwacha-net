@@ -14,11 +14,15 @@ typedef enum {
 typedef enum {
   ERROR,
   CONVOLUTIONAL,
+  CONVOLUTIONAL_GROUPED,
   CONVOLUTIONAL_ENCODED,
   CONVOLUTIONAL_ENCODED_COMPRESSED,
+  FULLY_CONNECTED,
   MAXPOOL,
+  SOFTMAX,
   MAXPOOL_DARKNET,
   BATCHNORM,
+  NORMALIZATION,
   REGION,
   START,
   BIAS,
@@ -66,6 +70,10 @@ struct layer
   int output_c;
 
   int nweights;
+
+  float alpha;
+  float beta;
+  int groups;
 };
 
 void setup_layers(struct layer*, struct layer*);

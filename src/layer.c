@@ -1,9 +1,11 @@
 #include "layer.h"
 #include "util.h"
 #include <math.h>
+#include <float.h>
 #include <stdint.h>
 #include "convolutional_layer.h"
 #include "maxpool_layer.h"
+#include "fc_layer.h"
 
 void setup_layers(struct layer* l1, struct layer* l2)
 {
@@ -50,6 +52,31 @@ void setup_layers(struct layer* l1, struct layer* l2)
         l2->nweights = l2->size * l2->size * l2->c * l2->n;
         l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
         im2col_id(l2);
+        break;
+      }
+    case CONVOLUTIONAL_GROUPED:
+      {
+        l2->output_w = conv_out_width(l2);
+        l2->output_h = conv_out_height(l2);
+        l2->output_c = l2->n;
+        l2->workspace_size = l2->output_h * l2->output_w * l2->c * l2->size * l2->size / l2->groups;
+        l2->nweights = l2->size * l2->size * l2->c * l2->n / l2->groups;
+        l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
+        im2col_id(l2);
+        break;
+      }
+    case NORMALIZATION:
+      {
+        l2->workspace_size = l2->w*l2->h*l2->c;
+        break;
+      }
+    case FULLY_CONNECTED:
+      {
+        l2->output_w = 1;
+        l2->output_h = 1;
+        l2->output_c = l2->n;
+        l2->nweights = l2->h*l2->c*l2->w*l2->n;
+        l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
         break;
       }
     case MAXPOOL_DARKNET:
@@ -206,6 +233,40 @@ void batchnorm_forward_32(struct layer* l, float* src, float* dest)
     scale_32 (&src[i*l->output_h*l->output_w], scales[i], l->output_h*l->output_w);
   //printf("%.3f %.3f %.3f batchnorm \n", src[0], src[1], src[2]);
 }
+
+void normalization_forward_32(struct layer* l, float* src, float* dest, float* workspace)
+{
+  int w = l->w;
+  int h = l->h;
+  int c = l->c;
+
+  float* scale_data = dest;
+  fill_32(w*h*c, 1.0, scale_data);
+  //printf("%.3f norm0\n", scale_data[0]);
+  float alpha_over_size = l->alpha / l->size;
+  float* squared_data = workspace;
+
+  square_32(c*w*h, src, squared_data);
+  //printf("%.3f norm1\n", squared_data[0]);
+  for (int i = 0; i < l->size; i++)
+    axpy_32(h*w, alpha_over_size, squared_data+i*w*h, scale_data);
+  //printf("%.3f norm2\n", scale_data[0]);
+  for (int i = 1; i < c; i++)
+    {
+      memcpy_32(scale_data + (i-1)*w*h, scale_data + i*w*h, h*w);
+      int next = i + l->size - 1;
+      int prev = i - 1;
+      if (next < c) axpy_32(h*w, alpha_over_size, squared_data+next*w*h,
+                            scale_data + i*w*h);
+      if (prev >= 0) axpy_32(h*w, -1.0*alpha_over_size, squared_data+prev*w*h,
+                             scale_data + i*w*h);
+    }
+  //printf("%.3f norm3\n", scale_data[0]);
+  for (int i = 0; i < w*h*c; i++) scale_data[i] = powf(scale_data[i], -1.0 * l->beta);
+  mul_32(h*w*c, src, scale_data);
+
+  printf("%.6f %.6f norm\n", dest[0], dest[999]);
+}
 void bias_forward_16(struct layer* l, int16_t* src)
 {
   for(int i = 0; i < l->output_c; ++i)
@@ -215,7 +276,7 @@ void bias_forward_32(struct layer* l, float* src)
 {
   for(int i = 0; i < l->output_c; ++i)
     add_32 (&src[i*l->output_h*l->output_w], l->weights_32[i], l->output_h*l->output_w);
-  //printf("%.3f bias\n", src[0]);
+  printf("%.6f %.6f bias\n", src[0], src[999]);
 }
 
 void leaky_forward_16(struct layer* l, int16_t* src)
@@ -282,6 +343,21 @@ void logistic_32(float* src, int size)
     {
       src[i] = logistic_activate(src[i]);
     }
+}
+
+void softmax_forward_32(struct layer* l, float* src, float* dest, float* workspace)
+{
+  int n = l->output_h*l->output_w*l->output_c;
+  float largest = -FLT_MAX;
+  float sum = 0.0;
+  for (int i = 0; i < n; i++) if (src[i] > largest) largest = src[i];
+  for (int i = 0; i < n; i++)
+    {
+      dest[i] = exp(src[i] - largest);
+      sum += dest[i];
+    }
+  scale_32(dest, 1.0 / largest, n);
+  printf("%.8f %.8f\n", dest[0], dest[999]);
 }
 void softmax(float *input, int n, int stride, float *output)
 {
@@ -361,7 +437,7 @@ void relu_forward_32(struct layer* l, float* src)
       i += consumed;
     }
   asm volatile ("fence");
-  //printf("%.3f %.3f %.3f relu \n", src[0], src[1], src[2]);
+  printf("%.9f %.9f relu \n", src[0], src[999]);
 }
 void average_forward_32(struct layer* l, float* src)
 {
@@ -395,9 +471,11 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
   switch (layer->type)
     {
     case CONVOLUTIONAL: { convolutional_precomp_forward_32(layer, src, dest, workspace); break; }
-    case CONVOLUTIONAL_ENCODED: {convolutional_precomp_encoded_forward_32(layer, src, dest, workspace); break; };
-    case CONVOLUTIONAL_ENCODED_COMPRESSED: {convolutional_precomp_encoded_compressed_forward_32(layer, src, dest, workspace); break; };
+    case CONVOLUTIONAL_ENCODED: { convolutional_precomp_encoded_forward_32(layer, src, dest, workspace); break; };
+    case CONVOLUTIONAL_ENCODED_COMPRESSED: { convolutional_precomp_encoded_compressed_forward_32(layer, src, dest, workspace); break; };
+    case CONVOLUTIONAL_GROUPED: { convolutional_precomp_grouped_forward_32(layer, src, dest, workspace); break; }
     case MAXPOOL_DARKNET: { maxpool_darknet_forward_32(layer, src, dest); break; }
+    case NORMALIZATION: { normalization_forward_32(layer, src, dest, workspace); break; }
     case BATCHNORM: { batchnorm_forward_32(layer, src, dest); break; }
     case REGION: { region_forward_32(layer, src, dest, workspace); break; }
     case BIAS: { bias_forward_32(layer, src); break; }
@@ -405,6 +483,8 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
     case RELU: { relu_forward_32(layer, src); break; }
     case MAXPOOL: {maxpool_darknet_forward_32(layer, src, dest); break;}
     case AVERAGE: {average_forward_32(layer, src); break;}
+    case FULLY_CONNECTED : { fc_forward_32(layer, src, dest, workspace); break;}
+    case SOFTMAX : {softmax_forward_32(layer, src, dest, workspace); break; }
     default: { printf("Unknown layer\n"); break; }
     }
 }

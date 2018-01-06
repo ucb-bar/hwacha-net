@@ -363,7 +363,7 @@ void gemm_encoded_compressed_32(int M, int N, int K,
                                 float* codebook)
 {
   //printf("%d %d %d\n", M, N, K);
-  int lda = K;
+  //int lda = K;
   int ldb = N;
   int ldc = N;
   setvcfg(0, 5, 0, 1);

@@ -389,3 +389,52 @@ void add_32(float* x, float y, int size)
     }
   asm volatile ("fence");
 }
+
+void square_32(int N, float* X, float* dest)
+{
+  setvcfg(0, 1, 0, 1);
+  for (int i = 0; i < N; )
+    {
+      int consumed = setvlen(N - i);
+      asm volatile ("vmca va0, %0" : : "r" (&X[i]));
+      asm volatile ("vmca va1, %0" : : "r" (&dest[i]));
+      asm volatile ("la t0, vsquare_32" : : : "t0");
+      asm volatile ("lw t1, 0(t0)");
+      asm volatile ("vf 0(t0)");
+      i += consumed;
+    }
+  asm volatile ("fence");
+}
+
+void axpy_32(int N, float A, float* X, float* Y)
+{
+  setvcfg(0, 2, 0, 1);
+  asm volatile ("vmcs vs1, %0" : : "r" (A));
+  for (int i = 0; i < N; )
+    {
+      int consumed = setvlen(N - i);
+      asm volatile ("vmca va0, %0" : : "r" (&X[i]));
+      asm volatile ("vmca va1, %0" : : "r" (&Y[i]));
+      asm volatile ("la t0, vaxpy_32" : : : "t0");
+      asm volatile ("lw t1, 0(t0)");
+      asm volatile ("vf 0(t0)");
+      i += consumed;
+    }
+  asm volatile ("fence");
+}
+
+void mul_32(int N, float* X, float* Y)
+{
+  setvcfg(0, 2, 0, 1);
+  for (int i = 0; i < N; )
+    {
+      int consumed = setvlen(N - i);
+      asm volatile ("vmca va0, %0" : : "r" (&X[i]));
+      asm volatile ("vmca va1, %0" : : "r" (&Y[i]));
+      asm volatile ("la t0, vmul_32" : : : "t0");
+      asm volatile ("lw t1, 0(t0)");
+      asm volatile ("vf 0(t0)");
+      i += consumed;
+    }
+  asm volatile ("fence");
+}

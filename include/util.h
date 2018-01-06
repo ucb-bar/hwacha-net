@@ -33,4 +33,9 @@ void scale_32(float* x, float scale, int size);
 void add_16(int16_t* x, int16_t y, int size);
 void add_32(float* x, float y, int size);
 
+void square_32(int N, float* x, float* dest);
+
+void axpy_32(int N, float A, float* X, float* Y);
+
+void mul_32(int N, float* X, float* Y);
 #endif

@@ -111,6 +111,29 @@ vadd_32:
         vsw vv0, va0
         vstop
 
+        .globl vsquare_32
+vsquare_32:
+        vlw vv0, va0
+        vfmul.s vv0, vv0, vv0
+        vsw vv0, va1
+        vstop
+
+        .globl vaxpy_32
+vaxpy_32:
+        vlw vv1, va1
+        vlw vv0, va0
+        vfmadd.s vv1, vs1, vv0, vv1
+        vsw vv1, va1
+        vstop
+
+        .globl vmul_32
+vmul_32:
+        vlw vv0, va0
+        vlw vv1, va1
+        vfmul.s vv1, vv0, vv1
+        vsw vv1, va1
+        vstop
+        
         .globl vleaky_activate_16
 vleaky_activate_16:
         vlh vv0, va0

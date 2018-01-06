@@ -79,6 +79,16 @@ void setup_layers(struct layer* l1, struct layer* l2)
         l2->nids = 0; l2->nindptr = 0; l2->ndata = 0;
         break;
       }
+    case FULLY_CONNECTED_ENCODED:
+      {
+        l2->output_w = 1;
+        l2->output_h = 1;
+        l2->output_c = l2->n;
+        l2->nweights = 17;
+        l2->nids = l2->h*l2->c*l2->w*l2->n;
+        l2->nindptr = 0; l2->ndata = 0;
+        break;
+      }
     case MAXPOOL_DARKNET:
       {
         l2->output_w = (l2->w + 2*l2->pad)/l2->stride;
@@ -484,6 +494,7 @@ void layer_forward_32(struct layer* layer, float* src, float* dest, float* works
     case MAXPOOL: {maxpool_darknet_forward_32(layer, src, dest); break;}
     case AVERAGE: {average_forward_32(layer, src); break;}
     case FULLY_CONNECTED : { fc_forward_32(layer, src, dest, workspace); break;}
+    case FULLY_CONNECTED_ENCODED : {fc_forward_encoded_32(layer, src, dest, workspace); break; }
     case SOFTMAX : {softmax_forward_32(layer, src, dest, workspace); break; }
     default: { printf("Unknown layer\n"); break; }
     }

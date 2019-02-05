@@ -178,4 +178,4 @@ vmax_16_iter:
 vmax_16_st:
         vsh vv1, va0
         vstop
-        vredadd.h vs1, vv0
+        #vredadd.h vs1, vv0

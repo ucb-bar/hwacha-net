@@ -1,8 +1,8 @@
 OBJDIR= ./obj/
 
-CC=	/scratch/jerryz/hwacha-build/build-tools/bin/riscv64-unknown-elf-gcc
-OBJDUMP=/scratch/jerryz/hwacha-build/build-tools/bin/riscv64-unknown-elf-objdump
-AR=	/scratch/jerryz/hwacha-build/build-tools/bin/riscv64-unknown-elf-ar
+CC=	riscv64-unknown-elf-gcc
+OBJDUMP=riscv64-unknown-elf-objdump
+AR=	riscv64-unknown-elf-ar
 
 VPATH=./src
 
@@ -11,7 +11,7 @@ ARFLAGS =  rcs
 OPTS =	   -O3
 LDFLAGS =  -lm
 COMMON =   -Iinclude/
-CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=RV64IMAFDXhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -g
+CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=rv64g -Wa,-march=rv64gxhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -g
 CFLAGS +=  $(OPTS)
 
 OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o fc_layer.o fc_layer_asm.o

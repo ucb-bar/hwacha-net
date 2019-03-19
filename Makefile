@@ -6,12 +6,27 @@ AR=	riscv64-unknown-elf-ar
 
 VPATH=./src
 
+ISA ?= rv64g
 
 ARFLAGS =  rcs
 OPTS =	   -O3
 LDFLAGS =  -lm
 COMMON =   -Iinclude/
-CFLAGS =   -Wall -Wno-comment -Wno-unknown-pragmas -Wno-misleading-indentation -Wfatal-errors -fPIC -march=rv64g -Wa,-march=rv64gxhwacha -ffast-math -static -fno-common -ffunction-sections -fdata-sections -Wl,--gc-sections -g
+CFLAGS = -static -g \
+	-march=$(ISA) \
+	-Wa,-march=$(ISA)xhwacha \
+	-Wl,--gc-sections \
+	-Wall \
+	-Wno-comment \
+	-Wno-unknown-pragmas \
+	-Wno-misleading-indentation \
+	-Wfatal-errors \
+	-fPIC \
+	-ffast-math \
+	-fno-common \
+	-ffunction-sections \
+	-fdata-sections \
+
 CFLAGS +=  $(OPTS)
 
 OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o fc_layer.o fc_layer_asm.o

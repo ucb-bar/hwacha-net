@@ -136,6 +136,7 @@ void gemm_16(int M, int N, int K,
 void gemm_32(int M, int N, int K,
              float* A, float* B, float* C)
 {
+#ifndef USE_SCALAR
   int lda = K;
   int ldb = N;
   int ldc = N;
@@ -262,6 +263,12 @@ void gemm_32(int M, int N, int K,
         }
     }
   asm volatile ("fence");
+#else
+  for (int m = 0; m < M; m++)
+    for (int n = 0; n < N; n++)
+      for (int k = 0; k < K; k++)
+        C[m*N+n] += A[m*K+k]*B[k*N+n];
+#endif
 }
 
 
@@ -269,6 +276,7 @@ void gemm_encoded_32(int M, int N, int K,
                      unsigned char* A, float* B, float* C,
                      float* codebook)
 {
+#ifndef USE_SCALAR
   int lda = K;
   int ldb = N;
   int ldc = N;
@@ -355,6 +363,12 @@ void gemm_encoded_32(int M, int N, int K,
         }
     }
   asm volatile ("fence");
+#else
+  for (int m = 0; m < M; m++)
+    for (int n = 0; n < N; n++)
+      for (int k = 0; k < K; k++)
+        C[m*N+n] += codebook[A[m*K+k]]*B[k*N+n];
+#endif
 }
 
 void gemm_encoded_compressed_32(int M, int N, int K,
@@ -362,10 +376,17 @@ void gemm_encoded_compressed_32(int M, int N, int K,
                                 float* B, float* C,
                                 float* codebook)
 {
-  //printf("%d %d %d\n", M, N, K);
-  //int lda = K;
+  int nrows = M;
+  int ncols = K;
+  int row = 0;
+  int indptrptr = 1;
+  int dataptr = indptr[0];
   int ldb = N;
   int ldc = N;
+
+#ifndef USE_SCALAR
+  //printf("%d %d %d\n", M, N, K);
+  //int lda = K;
   setvcfg(0, 5, 0, 1);
   void * pre_vfblockaddr;
   void * pre_edge_vfblockaddr;
@@ -385,11 +406,7 @@ void gemm_encoded_compressed_32(int M, int N, int K,
   asm volatile ("lw t0, 0(%0)" : : "r" (post_vfblockaddr) : "t0");
   asm volatile ("la %0, sgemm_opt_v_4_4_post_edge" : "=r" (post_edge_vfblockaddr));
   asm volatile ("lw t0, 0(%0)" : : "r" (post_edge_vfblockaddr) : "t0");
-  int nrows = M;
-  int ncols = K;
-  int row = 0;
-  int indptrptr = 1;
-  int dataptr = indptr[0];
+
   for ( ; row + 4 <= nrows; row += 4)
     {
       int rowa = dataptr;
@@ -520,4 +537,28 @@ void gemm_encoded_compressed_32(int M, int N, int K,
       dataptr += aentries;
     }
   asm volatile ("fence");
+#else
+  for ( ; row < nrows; row ++)
+    {
+      int aentries = 0;
+      while (indptr[indptrptr] == 255)
+        {
+          aentries += 255;
+          indptrptr++;
+        }
+      aentries += indptr[indptrptr++];
+      for (int k = 0; k < N; k++)
+        {
+          int i = row;
+          int col = indices[dataptr];
+          int dataptrptr = dataptr;
+          for (int j = 0; j < aentries; j++)
+            {
+              C[i*ldc + k] += codebook[data[dataptrptr++]] * B[col*ldb+k];
+              col += indices[dataptrptr];
+            }
+        }
+      dataptr += aentries;
+    }
+#endif
 }

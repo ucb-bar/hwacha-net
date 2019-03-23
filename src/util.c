@@ -235,6 +235,7 @@ void gather_16(const int* id, const int16_t* src, int16_t* dest, int len) {
 }
 
 void gather_32(const int* id, const float* src, float* dest, int len) {
+#ifndef USE_SCALAR
     setvcfg(0, 2, 0, 2);
     asm volatile ("la t0, vgather_32" : : : "t0");
     asm volatile ("lw t1, 0(t0)");
@@ -248,6 +249,10 @@ void gather_32(const int* id, const float* src, float* dest, int len) {
         i += consumed;
     }
     asm volatile ("fence");
+#else
+    for (int i = 0; i < len; i++)
+      dest[i] = (id[i] >= 0) ? src[id[i] >> 2] : 0.0;
+#endif
 }
 
 
@@ -269,6 +274,7 @@ void fill_16(int N, float ALPHA, int16_t * X)
 }
 void fill_32(int N, float ALPHA, float* X)
 {
+#ifndef USE_SCALAR
   int i;
   setvcfg(0, 0, 1, 1);
   asm volatile ("vmcs vs1, %0" : : "r" (ALPHA));
@@ -282,6 +288,10 @@ void fill_32(int N, float ALPHA, float* X)
       i += consumed;
     }
   asm volatile ("fence");
+#else
+  for (int i = 0; i < N; i++)
+    X[i] = ALPHA;
+#endif
 }
 
 
@@ -376,6 +386,7 @@ void add_16(int16_t* x, int16_t y, int size)
 }
 void add_32(float* x, float y, int size)
 {
+#ifndef USE_SCALAR
   setvcfg(0, 1, 0, 1);
   for (int i = 0; i < size; )
     {
@@ -388,6 +399,10 @@ void add_32(float* x, float y, int size)
       i += consumed;
     }
   asm volatile ("fence");
+#else
+  for (int i = 0; i < size; i++)
+    x[i] += y;
+#endif
 }
 
 void square_32(int N, float* X, float* dest)

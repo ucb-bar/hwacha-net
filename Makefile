@@ -29,6 +29,10 @@ CFLAGS = -static -g \
 
 CFLAGS +=  $(OPTS)
 
+ifdef SCALAR
+CFLAGS += -DUSE_SCALAR
+endif
+
 OBJ = util.o layer.o util_asm.o convolutional_layer.o maxpool_layer.o gemm.o gemm_asm.o fc_layer.o fc_layer_asm.o
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 
@@ -44,29 +48,7 @@ all : $(EXECS) $(DUMPS)
 %.dump : %
 	$(OBJDUMP) -d $^ > $@
 
-
-tiny_yolo_16: ./obj/tiny_yolo_16.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-tiny_yolo_32: ./obj/tiny_yolo_32.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-test: ./obj/test.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-squeezenet_32: ./obj/squeezenet_32.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-squeezenet_encoded_32: ./obj/squeezenet_encoded_32.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-squeezenet_encoded_compressed_32: ./obj/squeezenet_encoded_compressed_32.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-alexnet_32: ./obj/alexnet_32.o $(OBJS)
-	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-alexnet_encoded_32: ./obj/alexnet_encoded_32.o $(OBJS)
+$(EXECS): %: ./obj/%.o $(OBJS)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 $(OBJDIR)%.o: %.c $(DEPS)
@@ -74,7 +56,6 @@ $(OBJDIR)%.o: %.c $(DEPS)
 
 $(OBJDIR)%.o: %.S $(DEPS)
 	$(CC) $(COMMON) $(CFLAGS) -c $< -o $@
-
 obj:
 	mkdir -p obj
 

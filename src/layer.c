@@ -435,8 +435,9 @@ void region_forward_32(struct layer* l, float* src, float* dest, float* workspac
 }
 void relu_forward_32(struct layer* l, float* src)
 {
-  setvcfg(0, 1, 0, 1);
   int len = l->output_h*l->output_w*l->output_c;
+#ifndef USE_SCALAR
+  setvcfg(0, 1, 0, 1);
   for (int i = 0; i < len; )
     {
       int consumed = setvlen(len - i);
@@ -447,6 +448,11 @@ void relu_forward_32(struct layer* l, float* src)
       i += consumed;
     }
   asm volatile ("fence");
+#else
+  for (int i = 0; i < len; i++)
+    src[i] = (src[i] > 0.0) ? src[i] : 0.0;
+#endif
+  
   printf("%.9f %.9f relu \n", src[0], src[999]);
 }
 void average_forward_32(struct layer* l, float* src)

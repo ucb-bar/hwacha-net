@@ -6,6 +6,7 @@
 /* #define STBI_ONLY_PNG */
 /* #include "stb_image.h" */
 #include "util.h"
+#include "parse_args.h"
 #define NLAYERS 90
 
 void swap(float** a, float** b)
@@ -17,12 +18,15 @@ void swap(float** a, float** b)
 
 int main(int argc, char** argv)
 {
+  char* images[100] = {NULL}; // Do not give me more than 100 images!
+  char weights[128] = "weights/squeezenet_full_single.weights";
+
+  if (!parse_args(argc, argv, weights, images)) {
+    fprintf(stderr, "No image is given!\n");
+    return -2;
+  }
+
   hwacha_init();
-  if (argc < 2)
-    {
-      printf("Pass path to image\n");
-      return 0;
-    }
 
   layer \
     conv1, bias1, relu1, pool1,
@@ -330,13 +334,29 @@ int main(int argc, char** argv)
     workspace = safe_malloc(sizeof(float)*max_ws);
   }
   {
-    FILE* fp = fopen("weights/squeezenet_full_single.weights", "rb");
+    printf("weights: %s\n", weights);
+    FILE* fp = fopen(weights, "rb");
+    if (!fp) {
+      perror(weights);
+      return -2;
+    }
     load_layers(layers, NLAYERS, fp);
     fclose(fp);
   }
-  {
 
-    FILE* fp = fopen(argv[1], "rb");
+  printf("finish setup at cycle %zu\n", rdcycle());
+
+  size_t total_cycles = 0;
+  size_t total_instrets = 0;
+  for (int image_id = 0 ; images[image_id] ; image_id++)
+  {
+    char* image = images[image_id];
+    printf("image: %s\n", image);
+    FILE* fp = fopen(image, "rb");
+    if (!fp) {
+      perror(image);
+      return -2;
+    }
     fread(input, sizeof(float), 227*227*3, fp);
     fclose(fp);
     
@@ -378,8 +398,10 @@ int main(int argc, char** argv)
     /*         //input[dst_index] = data[src_index] - means[k]; */
     /*       } */
     /* free(data); */
-  }
-  {
+
+    size_t start_cycle = rdcycle();
+    size_t start_instret = rdinstret();
+
     layer_forward(&conv1, input, output, workspace); swap(&input, &output);
     layer_forward(&bias1, input, output, workspace);
     layer_forward(&relu1, input, output, workspace);
@@ -495,8 +517,7 @@ int main(int argc, char** argv)
     layer_forward(&biasfin, input, output, workspace);
     layer_forward(&relufin, input, output, workspace);
     layer_forward(&poolfin, input, output, workspace);
-  }
-  {
+
     float max = 0;
     int maxi = -1;
     for (int i = 0; i < 1000; i++)
@@ -507,7 +528,23 @@ int main(int argc, char** argv)
             maxi = i;
           }
       }
+
+    size_t end_cycle = rdcycle();
+    size_t end_instret = rdinstret();
+
     printf("Detected %s\n", LABELS[maxi]);
+
+    size_t cycles = end_cycle - start_cycle;
+    size_t instrets = end_instret - start_instret;
+    printf("Cycles for %s = %zu\n", image, cycles);
+    printf("Instructions for %s = %zu\n", image, instrets);
+    total_cycles += cycles;
+    total_instrets += instrets;
+    free(image);
   }
+  printf("***********************************\n");
+  printf("Total Cycles: %zu\n", total_cycles);
+  printf("Total Instructions: %zu\n", total_instrets);
+  printf("***********************************\n");
   return 0;
 }

@@ -26,14 +26,14 @@ void hwacha_init() {
 }
   
 
-int __attribute__((optimize("O0"))) rdcycle() {
-    int out = 0;
+size_t __attribute__((optimize("O0"))) rdcycle() {
+    size_t out = 0;
     asm("rdcycle %0" : "=r" (out));
     return out;
 }
 
-int __attribute__((optimize("O0"))) rdinstret() {
-    int out = 0;
+size_t __attribute__((optimize("O0"))) rdinstret() {
+    size_t out = 0;
     asm("rdinstret %0" : "=r" (out));
     return out;
 }

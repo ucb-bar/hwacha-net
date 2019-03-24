@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "util.h"
-
+#include "parse_args.h"
 
 #define NLAYERS 41
 
@@ -19,12 +19,15 @@ void swap(int16_t** a, int16_t** b)
 
 int main(int argc, char** argv)
 {
+  char* images[100] = {NULL}; // Do not give me more than 100 images!
+  char weights[128] = "weights/tiny_yolo_half.weights";
+
+  if (!parse_args(argc, argv, weights, images)) {
+    fprintf(stderr, "No image is given!\n");
+    return -2;
+  }
+
   hwacha_init();
-  if (argc < 2)
-    {
-      printf("Pass path to image\n");
-      return 0;
-    }
 
   layer \
     conv0, bn0, bias0, leaky0, max1,
@@ -103,15 +106,19 @@ int main(int argc, char** argv)
 
   }
   {
-    FILE* fp = fopen("weights/tiny_yolo_half.weights", "rb");
+    FILE* fp = fopen(weights, "rb");
+    if (!fp) {
+      perror(weights);
+      return -2;
+    }
     load_layers(layers, NLAYERS, fp);
     fclose(fp);
   }
 
-
   // Load input image
+  for (int image_id = 0 ; images[image_id] ; image_id++)
   {
-    char* fn = argv[1];
+    char* fn = images[image_id];
     int w, h, c;
     unsigned char* data = stbi_load(fn, &w, &h, &c, 3);
     if (w != conv0.w || h != conv0.h || c != conv0.c)
@@ -138,11 +145,9 @@ int main(int argc, char** argv)
     //printf("%u %u %u\n", buf[80000], buf[80001], buf[80002]);
     cvt_32_16(buf, input, conv0.h*conv0.w*conv0.c);
     //printf("%hu %hu %hu\n", input[80000], input[80001], input[80002]);
-  }
-
   
-  size_t cycles = rdcycle();
-  {
+    size_t cycles = rdcycle();
+
     layer_forward(&conv0, input, output, workspace); swap(&input, &output);
     layer_forward(&bn0, input, output, workspace);
     layer_forward(&bias0, input, output, workspace);
@@ -193,12 +198,15 @@ int main(int argc, char** argv)
     layer_forward(&bias14, input, output, workspace);
 
     layer_forward(&region15, input, output, workspace);
+
+    cycles = rdcycle() - cycles;
+
+    float* out = (float*) output;
+    for (int i = 0; i < region15.output_h*region15.output_w*region15.output_c; i++)
+      printf("%d %.3f\n", i, out[i]);
+
+    printf("cycles: %lu\n", cycles);
   }
-  cycles = rdcycle() - cycles;
-  float* out = (float*) output;
-  for (int i = 0; i < region15.output_h*region15.output_w*region15.output_c; i++)
-    printf("%d %.3f\n", i, out[i]);
-  printf("%lu\n", cycles);
   
   return 0;
 }

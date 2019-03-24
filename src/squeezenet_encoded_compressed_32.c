@@ -360,6 +360,10 @@ int main(int argc, char** argv)
     fclose(fp);
   }
 
+  printf("finish setup at cycle %zu\n", rdcycle());
+
+  size_t total_cycles = 0;
+  size_t total_instrets = 0;
   for (int image_id = 0 ; images[image_id] ; image_id++)
   {
     char* image = images[image_id];
@@ -371,9 +375,11 @@ int main(int argc, char** argv)
     }
     fread(input, sizeof(float), 227*227*3, fp);
     fclose(fp);
-    free(image);
     
     printf("%.3f input\n", input[0]);
+
+    size_t start_cycle = rdcycle();
+    size_t start_instret = rdinstret();
 
     layer_forward(&conv1, input, output, workspace); swap(&input, &output);
     layer_forward(&bias1, input, output, workspace);
@@ -500,7 +506,23 @@ int main(int argc, char** argv)
             maxi = i;
           }
       }
+
+    size_t end_cycle = rdcycle();
+    size_t end_instret = rdinstret();
+
     printf("Detected %s\n", LABELS[maxi]);
+
+    size_t cycles = end_cycle - start_cycle;
+    size_t instrets = end_instret - start_instret;
+    printf("Cycles for %s = %zu\n", image, cycles);
+    printf("Instructions for %s = %zu\n", image, instrets);
+    total_cycles += cycles;
+    total_instrets += instrets;
+    free(image);
   }
+  printf("***********************************\n");
+  printf("Total Cycles: %zu\n", total_cycles);
+  printf("Total Instructions: %zu\n", total_instrets);
+  printf("***********************************\n");
   return 0;
 }

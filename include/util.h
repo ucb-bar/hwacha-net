@@ -2,11 +2,12 @@
 #define util_h
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define MAX(a, b)  ((a>b)?a:b)
 void hwacha_init();
-int rdcycle();
-int rdinstret();
+size_t rdcycle();
+size_t rdinstret();
 void* safe_malloc(int size);
 void printfloatmatrix(int channels, int width, int height, float* M);
 void printintmatrix(int channels, int width, int height, int* M);
